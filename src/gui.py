@@ -164,7 +164,7 @@ class YouTubeDownloaderGUI:
                     self.root.after(0, lambda: self.show_error("Failed to fetch video information"))
                     
             except Exception as e:
-                self.root.after(0, lambda: self.show_error(f"Error: {str(e)}"))
+                self.root.after(0, lambda e=e: self.show_error(f"Error: {str(e)}"))
             finally:
                 self.root.after(0, lambda: self.fetch_btn.state(['!disabled']))
         

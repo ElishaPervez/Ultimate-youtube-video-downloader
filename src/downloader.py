@@ -62,48 +62,53 @@ class VideoDownloader:
         Returns:
             list: List of quality options
         """
-        if not info:
-            return []
-        
-        formats = info.get('formats', [])
-        quality_map = {}
-        
-        for fmt in formats:
-            if fmt.get('vcodec') != 'none' and fmt.get('acodec') != 'none':
-                height = fmt.get('height')
-                if height:
-                    quality_key = f"{height}p"
-                    ext = fmt.get('ext', 'mp4')
-                    filesize = fmt.get('filesize', 0)
-                    
-                    if quality_key not in quality_map or (filesize and filesize > quality_map[quality_key].get('filesize', 0)):
-                        quality_map[quality_key] = {
-                            'format_id': fmt.get('format_id'),
-                            'height': height,
-                            'ext': ext,
-                            'filesize': filesize,
-                            'fps': fmt.get('fps', 0),
-                        }
-        
-        audio_formats = [fmt for fmt in formats if fmt.get('vcodec') == 'none' and fmt.get('acodec') != 'none']
-        if audio_formats:
-            best_audio = max(audio_formats, key=lambda x: x.get('abr', 0))
-            quality_map['Audio Only'] = {
-                'format_id': best_audio.get('format_id'),
-                'ext': best_audio.get('ext', 'mp3'),
-                'filesize': best_audio.get('filesize', 0),
-                'abr': best_audio.get('abr', 0),
-            }
-        
-        sorted_qualities = []
-        video_qualities = [k for k in quality_map.keys() if k != 'Audio Only']
-        video_qualities.sort(key=lambda x: int(x.replace('p', '')), reverse=True)
-        sorted_qualities.extend(video_qualities)
-        
-        if 'Audio Only' in quality_map:
-            sorted_qualities.append('Audio Only')
-        
-        return sorted_qualities
+        try:
+            if not info:
+                return []
+
+            formats = info.get('formats', [])
+            quality_map = {}
+
+            for fmt in formats:
+                if fmt.get('vcodec') != 'none' and fmt.get('acodec') != 'none':
+                    height = fmt.get('height')
+                    if height:
+                        quality_key = f"{height}p"
+                        ext = fmt.get('ext', 'mp4')
+                        filesize = fmt.get('filesize', 0)
+
+                        if quality_key not in quality_map or (filesize and filesize > quality_map[quality_key].get('filesize', 0)):
+                            quality_map[quality_key] = {
+                                'format_id': fmt.get('format_id'),
+                                'height': height,
+                                'ext': ext,
+                                'filesize': filesize,
+                                'fps': fmt.get('fps', 0),
+                            }
+
+            audio_formats = [fmt for fmt in formats if fmt.get('vcodec') == 'none' and fmt.get('acodec') != 'none']
+            if audio_formats:
+                best_audio = max(audio_formats, key=lambda x: x.get('abr', 0))
+                quality_map['Audio Only'] = {
+                    'format_id': best_audio.get('format_id'),
+                    'ext': best_audio.get('ext', 'mp3'),
+                    'filesize': best_audio.get('filesize', 0),
+                    'abr': best_audio.get('abr', 0),
+                }
+
+            sorted_qualities = []
+            video_qualities = [k for k in quality_map.keys() if k != 'Audio Only']
+            video_qualities.sort(key=lambda x: int(x.replace('p', '')), reverse=True)
+            sorted_qualities.extend(video_qualities)
+
+            if 'Audio Only' in quality_map:
+                sorted_qualities.append('Audio Only')
+
+            return sorted_qualities
+        except Exception as e:
+            print(f"An unexpected error occurred in get_available_qualities: {str(e)}")
+            # Re-raise the exception to be caught by the GUI thread
+            raise
     
     def download_video(self, url, quality, output_path, progress_callback=None, completion_callback=None):
         """
