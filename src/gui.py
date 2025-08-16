@@ -157,7 +157,7 @@ class YouTubeDownloaderGUI:
                 self.video_info = self.downloader.get_video_info(url)
                 
                 if self.video_info:
-                    self.available_qualities = self.downloader.get_available_qualities(url)
+                    self.available_qualities = self.downloader.get_available_qualities(self.video_info)
                     
                     self.root.after(0, self.update_video_info)
                 else:

@@ -1,4 +1,5 @@
 import yt_dlp
+from yt_dlp.utils import DownloadError
 import os
 import threading
 from .utils import sanitize_filename, ensure_directory_exists, format_duration
@@ -22,11 +23,13 @@ class VideoDownloader:
             'quiet': True,
             'no_warnings': True,
             'extract_flat': False,
+            'force_generic_extractor': False,
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-us,en;q=0.5',
-            }
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Referer': 'https://www.youtube.com/',
+            },
         }
         
         try:
@@ -42,21 +45,23 @@ class VideoDownloader:
                     'description': info.get('description', ''),
                     'view_count': info.get('view_count', 0),
                 }
+        except DownloadError as e:
+            print(f"A yt-dlp download error occurred in get_video_info: {str(e)}")
+            return None
         except Exception as e:
-            print(f"Error getting video info: {str(e)}")
+            print(f"An unexpected error occurred in get_video_info: {str(e)}")
             return None
     
-    def get_available_qualities(self, url):
+    def get_available_qualities(self, info):
         """
-        Get available video qualities for the URL.
+        Get available video qualities from video info.
         
         Args:
-            url (str): YouTube video URL
+            info (dict): Video information dictionary
             
         Returns:
             list: List of quality options
         """
-        info = self.get_video_info(url)
         if not info:
             return []
         
@@ -161,10 +166,12 @@ class VideoDownloader:
                     'progress_hooks': [progress_hook],
                     'quiet': True,
                     'no_warnings': True,
+                    'force_generic_extractor': False,
                     'http_headers': {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36',
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
                         'Accept-Language': 'en-US,en;q=0.5',
+                        'Referer': 'https://www.youtube.com/',
                     },
                 }
                 
@@ -181,8 +188,13 @@ class VideoDownloader:
                 if completion_callback:
                     completion_callback(True, f"Successfully downloaded: {title}")
                     
+            except DownloadError as e:
+                error_msg = f"A yt-dlp download error occurred in download_video: {str(e)}"
+                print(error_msg)
+                if completion_callback:
+                    completion_callback(False, error_msg)
             except Exception as e:
-                error_msg = f"Download failed: {str(e)}"
+                error_msg = f"An unexpected error occurred in download_video: {str(e)}"
                 print(error_msg)
                 if completion_callback:
                     completion_callback(False, error_msg)
