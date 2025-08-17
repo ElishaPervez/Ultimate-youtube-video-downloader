@@ -30,6 +30,8 @@ class Worker(QObject):
             self.error.emit(str(e))
 
 class YouTubeDownloader(QMainWindow):
+    progress_update = pyqtSignal(dict)
+
     def __init__(self):
         super().__init__()
         
@@ -107,6 +109,7 @@ class YouTubeDownloader(QMainWindow):
         self.cfg_download_button.clicked.connect(self.start_custom_download)
         self.home_button.clicked.connect(lambda: self.switch_page(0))
         self.video_radio.toggled.connect(self.populate_config_page)
+        self.progress_update.connect(self.on_progress_update)
 
     def create_home_page(self):
         page = QWidget()
@@ -327,11 +330,17 @@ class YouTubeDownloader(QMainWindow):
         )
 
     def progress_hook(self, d):
+        # This is called from the worker thread.
+        # Emit a signal to safely update the GUI from the main thread.
+        self.progress_update.emit(d)
+
+    def on_progress_update(self, d):
+        # This slot is connected to the signal and executes on the main thread.
         if d['status'] == 'downloading':
             if d.get('total_bytes'):
                 percent = (d.get('downloaded_bytes', 0) / d['total_bytes']) * 100
                 self.progress_bar.setValue(int(percent))
-            self.log_box.append(f"Downloading: {d['_percent_str']} of {d.get('_total_bytes_str', 'N/A')} at {d.get('_speed_str', 'N/A')}")
+            self.log_box.append(f"Downloading: {d.get('_percent_str', '0.0%')} of {d.get('_total_bytes_str', 'N/A')} at {d.get('_speed_str', 'N/A')}")
         elif d['status'] == 'finished':
             self.log_box.append(f"Finished downloading, now converting...")
             self.progress_bar.setValue(100)
