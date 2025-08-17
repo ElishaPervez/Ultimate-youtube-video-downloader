@@ -269,15 +269,30 @@ class YouTubeDownloader(QMainWindow):
 
         if self.video_radio.isChecked():
             self.quality_group.setVisible(True)
+
+            allowed_resolutions = {'1080p', '720p', '480p', '360p', '240p', '144p'}
+            added_resolutions = set()
+
             formats = [f for f in self.video_info.get('formats', []) if f.get('vcodec') != 'none' and f.get('acodec') == 'none' and f.get('height')]
             formats.sort(key=lambda f: f.get('height', 0), reverse=True)
+
             for f in formats:
-                label = f"{f['height']}p"
-                if f.get('fps'):
-                    label += f" @ {f['fps']}fps"
-                self.quality_combo.addItem(label, f['format_id'])
+                height = f.get('height')
+                if not height:
+                    continue
+
+                resolution_label = f"{height}p"
+                if resolution_label in allowed_resolutions and resolution_label not in added_resolutions:
+                    # Prefer formats with higher fps for the same resolution
+                    label = f"{height}p"
+                    if f.get('fps'):
+                        label += f" ({f['fps']}fps)"
+
+                    self.quality_combo.addItem(label, f['format_id'])
+                    added_resolutions.add(resolution_label)
+
             self.format_combo.addItems(["mp4", "mkv"])
-        else: # Audio
+        else:  # Audio
             self.quality_group.setVisible(False)
             self.format_combo.addItems(["mp3", "wav"])
 
@@ -295,12 +310,15 @@ class YouTubeDownloader(QMainWindow):
 
     def start_custom_download(self):
         url = self.video_info.get('webpage_url')
-        
+
         if self.video_radio.isChecked():
             quality_id = self.quality_combo.currentData()
             file_format = self.format_combo.currentText()
             ydl_opts = {
-                'format': quality_id,
+                # This is the crucial fix. It tells yt-dlp to get the selected video,
+                # the best audio, and merge them. If that's not possible, fall back to
+                # the best available pre-merged file.
+                'format': f'{quality_id}+bestaudio/best',
                 'outtmpl': os.path.join(self.download_path, f'%(title)s.{file_format}'),
             }
         else: # Audio
