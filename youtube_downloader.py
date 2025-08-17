@@ -288,7 +288,7 @@ class YouTubeDownloader(QMainWindow):
                     if f.get('fps'):
                         label += f" ({f['fps']}fps)"
 
-                    self.quality_combo.addItem(label, f['format_id'])
+                    self.quality_combo.addItem(label, (f['format_id'], f['height']))
                     added_resolutions.add(resolution_label)
 
             self.format_combo.addItems(["mp4", "mkv"])
@@ -301,7 +301,7 @@ class YouTubeDownloader(QMainWindow):
         if not url:
             QMessageBox.warning(self, "URL Error", "Please enter a valid YouTube URL.")
             return
-        
+
         ydl_opts = {
             'format': 'bestvideo+bestaudio/best',
             'outtmpl': os.path.join(self.download_path, '%(title)s.%(ext)s'),
@@ -312,13 +312,18 @@ class YouTubeDownloader(QMainWindow):
         url = self.video_info.get('webpage_url')
 
         if self.video_radio.isChecked():
-            quality_id = self.quality_combo.currentData()
+            quality_data = self.quality_combo.currentData()
+            if not quality_data:
+                QMessageBox.warning(self, "Quality Error", "Please select a video quality.")
+                return
+
+            quality_id, height = quality_data
             file_format = self.format_combo.currentText()
+
+            format_string = f'{quality_id}+bestaudio/bestvideo[height<={height}]+bestaudio/best[height<={height}]'
+
             ydl_opts = {
-                # This is the crucial fix. It tells yt-dlp to get the selected video,
-                # the best audio, and merge them. If that's not possible, fall back to
-                # the best available pre-merged file.
-                'format': f'{quality_id}+bestaudio/best',
+                'format': format_string,
                 'outtmpl': os.path.join(self.download_path, f'%(title)s.{file_format}'),
             }
         else: # Audio
