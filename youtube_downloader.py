@@ -6,7 +6,7 @@ from downloader_logic import DownloaderLogic
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QStackedWidget, QPushButton, QLabel, QLineEdit, QRadioButton,
                              QComboBox, QProgressBar, QTextEdit, QGroupBox, QSpacerItem,
-                             QSizePolicy, QMessageBox, QFileDialog)
+                             QSizePolicy, QMessageBox, QFileDialog, QGraphicsOpacityEffect)
 from PyQt5.QtCore import Qt, QObject, QThread, pyqtSignal, QPropertyAnimation, QEasingCurve, QRect
 from PyQt5.QtGui import QFont
 
@@ -47,6 +47,8 @@ class YouTubeDownloader(QMainWindow):
         self.main_layout = QVBoxLayout(self.central_widget)
         
         self.stacked_widget = QStackedWidget()
+        self.opacity_effect = QGraphicsOpacityEffect(self.stacked_widget)
+        self.stacked_widget.setGraphicsEffect(self.opacity_effect)
         self.main_layout.addWidget(self.stacked_widget)
 
         self.create_home_page()
@@ -345,34 +347,26 @@ class YouTubeDownloader(QMainWindow):
         self.home_button.setEnabled(True)
 
     def switch_page(self, index):
-        self.animation = QPropertyAnimation(self.stacked_widget, b"geometry")
-        self.animation.setDuration(300)
-        self.animation.setStartValue(self.stacked_widget.geometry())
+        if self.stacked_widget.currentIndex() == index:
+            return
 
-        current_x = self.stacked_widget.geometry().x()
-        width = self.stacked_widget.frameGeometry().width()
+        self.anim_out = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.anim_out.setDuration(200)
+        self.anim_out.setStartValue(1.0)
+        self.anim_out.setEndValue(0.0)
+        self.anim_out.setEasingCurve(QEasingCurve.InQuad)
+        self.anim_out.finished.connect(lambda: self.change_widget_and_fade_in(index))
+        self.anim_out.start()
 
-        if index > self.stacked_widget.currentIndex():
-            self.animation.setEndValue(QRect(current_x - width, self.stacked_widget.y(), width, self.stacked_widget.height()))
-        else:
-            self.animation.setEndValue(QRect(current_x + width, self.stacked_widget.y(), width, self.stacked_widget.height()))
-
-        self.animation.finished.connect(lambda: self.finish_switch(index))
-        self.animation.start()
-
-    def finish_switch(self, index):
+    def change_widget_and_fade_in(self, index):
         self.stacked_widget.setCurrentIndex(index)
-        current_x = self.stacked_widget.geometry().x()
-        width = self.stacked_widget.frameGeometry().width()
 
-        if current_x < 0:
-            self.stacked_widget.move(width, self.stacked_widget.y())
-        else:
-            self.stacked_widget.move(-width, self.stacked_widget.y())
-
-        self.animation.setStartValue(self.stacked_widget.geometry())
-        self.animation.setEndValue(QRect(0, self.stacked_widget.y(), width, self.stacked_widget.height()))
-        self.animation.start()
+        self.anim_in = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.anim_in.setDuration(200)
+        self.anim_in.setStartValue(0.0)
+        self.anim_in.setEndValue(1.0)
+        self.anim_in.setEasingCurve(QEasingCurve.OutQuad)
+        self.anim_in.start()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
